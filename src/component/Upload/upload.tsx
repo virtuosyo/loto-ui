@@ -1,7 +1,7 @@
 import React, { ChangeEvent, FC, useRef, useState } from "react";
 import axios from "axios";
-import { Button } from "../Button/button";
 import UploadList from "./uploadList";
+import { Dragger } from "./dragger";
 
 export type UploadFileStatus = "ready" | "uploading" | "success" | "error";
 
@@ -25,6 +25,13 @@ export interface UploadProps {
   onError?: (err: any, file: File) => void;
   onChange?: (file: File) => void;
   onRemove?: (file: UploadFile) => void;
+  header?: { [key: string]: any };
+  name?: string;
+  data?: { [key: string]: any };
+  withCredentials?: boolean;
+  accept?: string;
+  multiple?: boolean;
+  drag?: boolean;
 }
 
 export const Upload: FC<UploadProps> = (props) => {
@@ -37,6 +44,14 @@ export const Upload: FC<UploadProps> = (props) => {
     beforeUpload,
     onChange,
     onRemove,
+    name,
+    header,
+    data,
+    withCredentials,
+    accept,
+    multiple,
+    drag,
+    children,
   } = props;
   const fileInput = useRef<HTMLInputElement>(null);
   const [fileList, setFileList] = useState<UploadFile[]>(defaultFileList || []);
@@ -104,14 +119,24 @@ export const Upload: FC<UploadProps> = (props) => {
       percent: 0,
       raw: file,
     };
-    setFileList([_file, ...fileList]);
+    // setFileList([_file, ...fileList]);
+    setFileList((prevList) => {
+      return [_file, ...prevList];
+    });
     const formData = new FormData();
-    formData.append(file.name, file);
+    formData.append(name || "file", file);
+    if (data) {
+      Object.keys(data).forEach((key) => {
+        formData.append(key, data[key]);
+      });
+    }
     axios
       .post(action, formData, {
         headers: {
+          ...header,
           "Content-Type": "multipart/form-data",
         },
+        withCredentials,
         onUploadProgress: (e) => {
           let percentage = Math.round((e.loaded * 100) / e.total) || 0;
           if (percentage < 100) {
@@ -146,16 +171,39 @@ export const Upload: FC<UploadProps> = (props) => {
 
   return (
     <div className="loto-upload-component">
-      <Button btnType="primary" onClick={handleClick}></Button>
+      <div
+        className="loto-upload-input"
+        style={{ display: "inline-block" }}
+        onClick={handleClick}
+      >
+        {drag ? (
+          <Dragger
+            onFile={(files) => {
+              uploadFiles(files);
+            }}
+          >
+            {children}
+          </Dragger>
+        ) : (
+          { children }
+        )}
+      </div>
       <input
         className="loto-file-input"
         style={{ display: "none" }}
         type="file"
+        ref={fileInput}
         onChange={handleFileChange}
+        accept={accept}
+        multiple={multiple}
       />
       <UploadList fileList={fileList} onRemove={handleRemove} />
     </div>
   );
+};
+
+Upload.defaultProps = {
+  name: "file",
 };
 
 export default Upload;
