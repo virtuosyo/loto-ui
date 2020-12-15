@@ -52,4 +52,4 @@ Button.defaultProps = {
   btnType: "default",
 };
 
-// export default Button;
+export default Button;
